@@ -1,0 +1,34 @@
+//Map at study area
+Map.setCenter(70.39,23.33,4); 
+
+// Region of interest
+var selection = L8.filterBounds(ROI)
+.filterDate("2016-01-01","2016-12-01")
+.filterMetadata("CLOUD_COVER", "less_than", 1)
+.mean()
+.clip(ROI);
+
+// Layer and bands selected
+
+Map.addLayer(selection, {bands:["B4","B3","B2"]});
+
+// Model Training
+var training_points = Water.merge(Vegetation).merge(No_Vegetation);
+print(training_points);
+var training_data = selection.sampleRegions({
+                    collection:training_points,
+                    properties: ['LC'],
+                    scale: 30})
+print(training_data);
+
+// Cart Classification
+var classifier = ee.Classifier.smileCart()
+var classifier = classifier.train({features: training_data,
+classProperty: "LC",
+inputProperties: ["B1","B2","B3","B4","B5","B6","B7","B10","B11"]});
+var classified_image = selection.classify(classifier); 
+Map.addLayer(classified_image, {min: 0, max: 2, palette: ['blue','green', 'red']},
+'classified image');
+
+// Accuracy assesment
+print('Confusion Matrix', classifier.confusionMatrix());
